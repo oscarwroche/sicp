@@ -632,4 +632,186 @@
    (lambda (t) (= (+ (car t) (cadr t) (caddr t)) s))
    (unique-triplets n)))
 
+;;; Exercise 2.42
 
+(define (queens board-size)
+  (define (queen-cols k)  
+    (if (= k 0)
+        (list empty-board)
+        (filter
+         (lambda (positions) (safe? k positions))
+         (flatmap
+          (lambda (rest-of-queens)
+            (map (lambda (new-row)
+                   (adjoin-position new-row k rest-of-queens))
+                 (enumerate-interval 1 board-size)))
+          (queen-cols (- k 1))))))
+  (queen-cols board-size))
+
+(define (adjoin-position new-row k rest-of-queens)
+  (cons (cons new-row k) rest-of-queens))
+
+(define empty-board ())
+
+(define (safe? k positions)
+  (fold-left
+   (lambda (a b) (and a b))
+   #t
+   (map
+    (lambda (position) (two-safe? (get-position k positions) position))
+    (filter-out-position k positions))))
+
+(define (get-position k positions)
+  (car 
+   (filter
+    (lambda (position)
+      (is-column k position))
+    positions)))
+
+(define (filter-out-position k positions)
+  (filter
+   (lambda (position)
+     (not (is-column k position)))
+   positions))
+
+(define (is-column k position)
+  (= (cdr position) k))
+
+(define (two-safe? position1 position2)
+  (let ((row1 (car position1))
+	(col1 (cdr position1))
+	(row2 (car position2))
+	(col2 (cdr position2)))
+    (and
+     (not
+      (= (abs (- col2 col1))
+	 (abs (- row2 row1))))
+     (not
+      (= row1 row2)))))
+
+;;;
+
+(define a 1)
+
+(define b 2)
+
+(list a b)
+
+(list 'a 'b)
+
+(list 'a b)
+
+(car '(a b c))
+(cdr '(a b c))
+
+(define (memq item x)
+  (cond ((null? x) false)
+        ((eq? item (car x)) x)
+        (else (memq item (cdr x)))))
+
+(memq 'apple '(pear banana prune))
+
+(memq 'apple '(x (apple sauce) y apple pear))
+
+;;; Exercise 2.53
+
+(list 'a 'b 'c)
+
+(list (list 'george))
+(cdr '((x1 x2) (y1 y2)))
+
+(cadr '((x1 x2) (y1 y2)))
+(pair? (car '(a short list)))
+(memq 'red '((red shoes) (blue socks)))
+
+(memq 'red '(red shoes blue socks))
+
+;;; Exercise 2.54
+
+(define (equal? a b)
+  (if (and
+       (not (pair? a))
+       (not (pair? b)))
+      (eq? a b)
+      (and
+       (eq? (car a) (car b))
+       (equal? (cdr a) (cdr b)))))
+
+;;; Exercise 2.55
+
+;;; The string after ' is taken as a list of characters
+
+;;;
+
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp)
+         (if (same-variable? exp var) 1 0))
+        ((sum? exp)
+         (make-sum (deriv (addend exp) var)
+                   (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+           (make-product (multiplier exp)
+                         (deriv (multiplicand exp) var))
+           (make-product (deriv (multiplier exp) var)
+                         (multiplicand exp))))
+	((exponentiation? exp)
+	 (make-product
+	  (make-product
+	   (exponent exp)
+	   (make-exponentiation (base exp) (- (exponent exp) 1)))
+	  (deriv (base exp) var)))
+        (else
+         (error "unknown expression type -- DERIV" exp))))
+
+(define (variable? x) (symbol? x))
+
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2)))
+
+(define (make-sum a1 a2) (list '+ a1 a2))
+
+(define (make-product m1 m2) (list '* m1 m2))
+
+(define (sum? x)
+  (and (pair? x) (eq? (car x) '+)))
+
+(define (addend s) (cadr s))
+
+(define (augend s) (caddr s))
+
+(define (product? x)
+  (and (pair? x) (eq? (car x) '*)))
+
+(define (multiplier p) (cadr p))
+
+(define (multiplicand p) (caddr p))
+
+(define (make-sum a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list '+ a1 a2))))
+
+(define (=number? exp num)
+  (and (number? exp) (= exp num)))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1) (number? m2)) (* m1 m2))
+        (else (list '* m1 m2))))
+
+(define (exponentiation? x)
+  (and (pair? x) (eq? (car x) '**)))
+
+(define base cadr)
+
+(define exponent caddr)
+
+(define (make-exponentiation base exponent)
+  (cond ((=number? exponent 0) 1)
+	((=number? exponent 1) base)
+	(else (list '** base exponent))))
